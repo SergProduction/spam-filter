@@ -25,8 +25,8 @@ fs.readFile(path.join(__dirname, './spam.txt'), (err, file) => {
   const text = file.toString('utf8')
   const docs = parseDocs(text, /-;/g)
   const d = parseWordInDocs(docs)
-  const tf = comput_tf(d)
-  const idf = comput_idf(d[0][0], d)
+  const tf = tf(d)
+  const idf = idf(d[0][0], d)
   // console.log(tf, idf)
 })
 */
@@ -37,7 +37,7 @@ exports.parseDocs = (text, separate) => {
     : [text]
 }
 
-exports.parseWordInDocs = docs => {
+exports.parseWordInDocs = (docs /*docs?[words?string]*/) => {
   const d = []
   return docs.map((doc, i) => {
     const words = doc.split(/[\n\s]+/g).filter(word => word !== '')
@@ -45,26 +45,59 @@ exports.parseWordInDocs = docs => {
   })
 }
 
-exports.comput_tf = docs => {
+exports.tf = (docs /*docs?[doc?[word?string]]*/) => {
   return docs.map(doc => {
     return doc.map(word => {
-      const count = doc.filter(w => w === word)
+      const count  = doc.filter(w => w === word)
+      const tf = count.length
+      return [ word, tf ]
+    })
+  })
+}
+
+exports.tf_range = (docs /*docs?[doc?[word?string]]*/) => {
+  return docs.map(doc => {
+    return doc.map(word => {
+      const count  = doc.filter(w => w === word)
       const tf = count.length / doc.length
       return [ word, tf ]
     })
   })
 }
 
-exports.comput_idf = (word, docs) => {
+exports.tf_log = (docs /*docs?[doc?[word?string]]*/) => {
+  return docs.map(doc => {
+    return doc.map(word => {
+      const count = doc.filter(w => w === word)
+      const tf = 1 + Math.log10(count.length)
+      return [ word, tf ]
+    })
+  })
+}
+
+exports.df = (word, docs) => {
   let word_count_in_docs = 0
   docs.forEach(doc => {
-    const res = doc.find(([wrd, weight]) => wrd === word)
+    const res = doc.find(([wrd, tf]) => wrd === word)
     if (res) {
       word_count_in_docs += 1
     }
   })
+  return word_count_in_docs
+}
 
-  return word_count_in_docs !== 0
-    ? Math.log10(docs.length / word_count_in_docs)
+exports.idf = (word, docs) => {
+  const _df = df(word, docs)
+
+  return _df !== 0
+    ? Math.log10(docs.length / _df)
     : 0
 }
+
+exports.tf_idf = (_tf, _idf) => {
+  return _tf * _idf
+}
+
+exports.vector = p => Math.sqrt( ...p.map(el => el ** 2) )
+
+// vector = p => Math.sqrt( ...p.map(el => el ** 2) )
